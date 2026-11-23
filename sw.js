@@ -1,4 +1,11 @@
-const C="gvrm-v1";
-self.addEventListener("install",e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(["./","index.html","shim.js","icon-192.png"])));self.skipWaiting()});
-self.addEventListener("activate",e=>e.waitUntil(clients.claim()));
-self.addEventListener("fetch",e=>{if(e.request.method!=="GET")return;e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(C).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request)))});
+/* Service worker — offline support. Bump V when you upload a new version. */
+const V = "gvrm-v1";
+const ASSETS = ["./", "index.html", "shim.js", "shim-config.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
+self.addEventListener("install", e => { e.waitUntil(caches.open(V).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
+self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== V).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
+self.addEventListener("fetch", e => {
+  const r = e.request;
+  if (r.method !== "GET" || new URL(r.url).origin !== location.origin) return;
+  e.respondWith(fetch(r).then(res => { const cp = res.clone(); caches.open(V).then(c => c.put(r, cp)); return res; })
+    .catch(() => caches.match(r).then(m => m || caches.match("index.html"))));
+});

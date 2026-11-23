@@ -1,0 +1,26 @@
+rules_version = '2';
+// Paste into Firebase console → Firestore Database → Rules  (only needed for FIREBASE mode)
+// 1) Replace teacher@example.com with the teacher e-mail(s) you created in Firebase Authentication.
+// 2) Use the SAME e-mails in shim-config.js → teacherEmails.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isTeacher() {
+      return signedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email.lower() in ['teacher@example.com'];
+    }
+
+    // Student homework submissions: each student only touches their own document; teacher sees all.
+    match /stuwork/{uid} {
+      allow read, write: if signedIn() && (request.auth.uid == uid || isTeacher());
+    }
+
+    // Everything else: any signed-in visitor (anonymous included) can read, only the teacher can write.
+    match /{col}/{docId} {
+      allow read: if signedIn() && col != 'stuwork';
+      allow write: if isTeacher() && col != 'stuwork';
+    }
+  }
+}
